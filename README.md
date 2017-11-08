@@ -68,7 +68,7 @@ currently leveraging this companion GMail native filter, to identify emails that
 Matches: ((from:notifications@github.com OR replyto:users@*apache.org OR replyto:dev@*apache.org) OR replyto:*@*yahoogroups.com OR replyto:*@*lists.jboss.org) AND -label:OSS-personal)
 Do this: Apply label "OSS"
 
-Matches: (to:(author@noreply.github.com OR mention@noreply.github.com ) OR cc:comment@noreply.github.com)
+Matches:  (ListID:paoloantinori* OR (to:(author@noreply.github.com OR mention@noreply.github.com OR manual@noreply.github.com ) OR cc:comment@noreply.github.com))
 Do this: Apply label "OSS/personal", Categorize as Personal
 ```
 
