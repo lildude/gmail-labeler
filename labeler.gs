@@ -3,19 +3,10 @@ var filters = [
   // { name: 'user emails', match: /deliveredto:user@domain.com/, star: true }, // star emails deliveredto user@domain.com
   
   // use a RegEx selector (.+?) to set the label name
-  // Ex: 
-  //      List-Id: Hibernate Dev List <hibernate-dev.lists.jboss.org>
-  { id: "First Filter", match: /(?:List-ID:\s(.+?)\s<)/i, archive: true }, // organize by list name 
+  // { match: /(?:List-ID:\s(.+?)\s<)/, archive: true }, // organize by list name
 
-    // use a RegEx selector (.+?) to set the label name
-  // Ex: 
-  //      List-Id: <users.activemq.apache.org>
-   { id: "Second Filter", match: /List-ID:[^<]*<(.+?)>/i, archive: true }, // organize by list name 
-
-  
   // use the subject shortcut to check the subject for text
   // { name: 'finance', subject: 'bank', markRead: true }, // label all emails with "bank" in the subject as "finance" and mark as read
-
 ];
 
 var from = [
@@ -23,37 +14,22 @@ var from = [
   // "list:subscription.domain.com"
 ];
 
-var ROOT_FOLDER = "OSS/";
-var SELECTION = "-label:OSS-personal AND (label:OSS)";
-
 function labeler() {
 
   var batchSize = 50;
   var labelCache = {};
   var query = "in:inbox AND (" + from.join(' OR ') + ")";
-  if (SELECTION) {
-    query += " AND (" + SELECTION + ")";
-  }
   var threads = GmailApp.search(query, 0, batchSize);
   GmailApp.getMessagesForThreads(threads);
 
   var findOrCreateLabel = function(name) {
     if (labelCache[name] === undefined) {
-      var labelObject = GmailApp.getUserLabelByName(name);
-      if( labelObject ){
-        labelCache[name] = labelObject;
-      } else {
-        labelCache[name] = GmailApp.createLabel(name);
-        Logger.log("Created new label: [" + name + "]");
-      }
-      
+      labelCache[name] = GmailApp.getUserLabelByName(name) || GmailApp.createLabel(name);
     }
     return labelCache[name];
   }
 
   var applyLabel = function(name, thread){
-    name = ROOT_FOLDER + name;
-    
     var label = null;
     var labelName = "";
 
@@ -68,40 +44,31 @@ function labeler() {
 
   threads.forEach(function(thread) {
     var messages = thread.getMessages();
-    if (messages == null) 
-      return; // nothing to do
+    if (messages == null) return; // nothing to do
 
     var message = messages[messages.length - 1]; // most recent message
     var body = message.getRawContent();
-    var archive = true;
-    Logger.log("Body: " + body);
+
     filters.forEach(function(filter){
-      Logger.log("Applying filter: " + filter.id);
+
       // shortcuts
-      if (filter.subject) 
-        filter.match = new RegExp('Subject:.*?' + filter.subject, 'i');
+      if (filter.subject) filter.match = new RegExp('Subject:.*?' + filter.subject, 'i');
 
       var matches = filter.match.exec(body);
       if (matches !== null) {
 
         // label will be regex match or name provided
         var label = filter.name || matches[1];
-        if (label !== undefined) 
-          applyLabel(label, thread);
+        if (label !== undefined) applyLabel(label, thread);
 
         // toggle flags
-        if (filter.star) 
-          message.star();
-        if (filter.markRead) 
-          message.markRead();
+        if (filter.star) message.star();
+        if (filter.markRead) message.markRead();
 
-        // prevent archive if filter explicitly sets "archive" to false (if "archive" is not defined, continue)
-        if (filter.archive !== undefined && !filter.archive) 
-          archive = false;
+        // only archive if explicitly asked to
+        if (filter.archive) thread.moveToArchive();
       }
     });
-
-    if (archive) 
-      thread.moveToArchive();
+ 
   });
 }
